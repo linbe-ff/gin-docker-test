@@ -1,4 +1,4 @@
-package gin_docker_test
+package main
 
 import (
 	"net/http"
@@ -12,9 +12,9 @@ func main() {
 	// 2.绑定路由规则，执行的函数
 	// gin.Context，封装了request和response
 	r.GET("/", func(c *gin.Context) {
-		c.String(http.StatusOK, "hello World!")
+		c.String(http.StatusOK, "hello 2!")
 	})
 	// 3.监听端口，默认在8080
 	// Run("里面不指定端口号默认为8080")
-	r.Run(":8000")
+	r.Run(":8001")
 }
