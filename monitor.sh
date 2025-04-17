@@ -23,11 +23,11 @@ CURRENT_PID=""
 
 while true; do
     # 获取本地和远程最新提交
-    LOCAL=$(git rev-parse @)
-    REMOTE=$(git rev-parse "origin/$BRANCH")
-
-    if [ "$LOCAL" != "$REMOTE" ]; then
-        echo "检测到新提交，开始更新..."
+#    LOCAL=$(git rev-parse @)
+#    REMOTE=$(git rev-parse "origin/$BRANCH")
+#
+#    if [ "$LOCAL" != "$REMOTE" ]; then
+#        echo "检测到新提交，开始更新..."
 
         # 拉取最新代码
         git pull origin "$BRANCH"
@@ -53,9 +53,9 @@ while true; do
 
         # 记录当前版本
         git rev-parse HEAD > .current_version
-    else
-        echo "没有检测到新提交，当前版本: $(cat .current_version 2>/dev/null || echo '未知')"
-    fi
+#    else
+#        echo "没有检测到新提交，当前版本: $(cat .current_version 2>/dev/null || echo '未知')"
+#    fi
 
     # 等待下次检查
     sleep $CHECK_INTERVAL
