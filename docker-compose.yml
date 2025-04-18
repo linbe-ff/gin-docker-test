@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  monitor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: goenv:24  # 添加这一行
+    container_name: go8001  # 指定容器名称
+    ports:
+      - "8001:8001"
+    restart: unless-stopped
+    volumes:
+      - ./monitor.sh:/app/monitor.sh
+      - ./logs:/app/logs  # 如果需要日志持久化
+    environment:
+      - TZ=Asia/Shanghai
+      - APP_ENV=production
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f monitor.sh || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
