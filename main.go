@@ -15,7 +15,7 @@ func main() {
 	r := gin.Default()
 	// 2.绑定路由规则，执行的函数
 	// gin.Context，封装了request和response
-	logpath := "app\\log\\"
+	logpath := "/app/logs/"
 	r.GET("/", func(c *gin.Context) {
 
 		it := new(interface{})
@@ -24,8 +24,8 @@ func main() {
 		fmt.Println(it)
 		fmt.Println(shouldBind)
 
-		os.WriteFile(logpath+"log"+time.Now().Format("2006-01-02 15:04:05")+".log",
-			[]byte("有吊毛调接口了"+time.Now().Format("2006-01-02 15:04:05")), 0644)
+		os.WriteFile(logpath+"log"+time.Now().Format("2006-01-02")+".log",
+			[]byte("有吊毛调接口了"+time.Now().Format("2006-01-02")), 0644)
 		c.String(http.StatusOK, "部署到docker")
 	})
 	// 3.监听端口，默认在8080
