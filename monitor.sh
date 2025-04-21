@@ -44,10 +44,18 @@ while true; do
             CURRENT_PID=""
         fi
 
+        # 配置文件覆盖
+        if [ -f "$LOCAL_REPO/config.oline.yaml" ]; then
+            echo "配置文件存在，覆盖..."
+            cp -f "$LOCAL_REPO/config.oline.yaml" "$LOCAL_REPO/config.yaml"
+        fi
+
         # 构建Go程序
         echo "开始构建..."
 
+        echo "拉取依赖..."
         go mod tidy
+        echo "拉取依赖完成,打包构建"
 
         go build -o "$APP_NAME"
 
