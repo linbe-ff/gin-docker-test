@@ -24,8 +24,17 @@ func main() {
 		fmt.Println(it)
 		fmt.Println(shouldBind)
 
-		os.WriteFile(logpath+"log"+time.Now().Format("2006-01-02")+".log",
-			[]byte("有吊毛调接口了"+time.Now().Format("2006-01-02")), 0644)
+		file, err := os.OpenFile(logpath+"log"+time.Now().Format("2006-01-02")+".log",
+			os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			fmt.Println("打开日志文件失败:", err)
+			return
+		}
+		defer file.Close()
+
+		if _, err := file.WriteString("有吊毛调接口了" + time.Now().Format("2006-01-02 15:04:05") + "\n"); err != nil {
+			fmt.Println("写入日志失败:", err)
+		}
 		c.String(http.StatusOK, "部署到docker")
 	})
 	// 3.监听端口，默认在8080
