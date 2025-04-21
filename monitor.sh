@@ -45,9 +45,9 @@ while true; do
         fi
 
         # 配置文件覆盖
-        if [ -f "$LOCAL_REPO/config.oline.yaml" ]; then
+        if [ -f "$LOCAL_REPO/config.oline.yml" ]; then
             echo "配置文件存在，覆盖..."
-            cp -f "$LOCAL_REPO/config.oline.yaml" "$LOCAL_REPO/config.yaml"
+            cp -f "$LOCAL_REPO/config.oline.yml" "$LOCAL_REPO/config.yml"
         fi
 
         # 构建Go程序
