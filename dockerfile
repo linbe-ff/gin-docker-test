@@ -1,5 +1,5 @@
 # 使用指定版本的官方Go镜像作为基础
-FROM golang:1.24 as builder
+FROM golang:1.24.1 as builder
 
 # 安装Git和必要的工具
 RUN apt-get update && apt-get install -y git

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 	"strconv"
@@ -16,9 +17,16 @@ func main() {
 	// gin.Context，封装了request和response
 	logpath := "app\\log\\"
 	r.GET("/", func(c *gin.Context) {
-		c.String(http.StatusOK, "部署到docker")
+
+		it := new(interface{})
+
+		shouldBind := c.ShouldBind(&it)
+		fmt.Println(it)
+		fmt.Println(shouldBind)
+
 		os.WriteFile(logpath+"log"+time.Now().Format("2006-01-02 15:04:05")+".log",
 			[]byte("有吊毛调接口了"+time.Now().Format("2006-01-02 15:04:05")), 0644)
+		c.String(http.StatusOK, "部署到docker")
 	})
 	// 3.监听端口，默认在8080
 	// Run("里面不指定端口号默认为8080")
