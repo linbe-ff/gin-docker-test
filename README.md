@@ -1,190 +1,185 @@
 # docker 部署go 项目教程
+ 秘钥这里只做示例 （不可用）
+## 目录结构
+```
+.
+├── docker-compose.yml
+├── go1
+│   ├── Dockerfile
+│   └── main
+├── go2
+│   ├── Dockerfile
+│   └── main
+└── nginx
+├── nginx.conf
+├── conf.d
+│   ├── go1.conf
+│   └── go2.conf
+└── certs
+├── go1.pem
+├── go1.key
+├── go2.pem
+└── go2.key
 
-## docker-compose.yml 配置
-``` yaml
+```
+
+## 1. docker-compose.yml
+
+```shell
 version: '3.8'
 
 services:
-  monitor:
+  go8001:
     build:
-      context: .
+      context: ./go1
       dockerfile: Dockerfile
-    container_name: go-main  # 指定容器名称
+    image: goenv:8001
+    container_name: go1
     ports:
       - "8001:8001"
     restart: unless-stopped
     volumes:
-      - ./monitor.sh:/app/monitor.sh
-      - ./logs:/app/logs  # 如果需要日志持久化
+      - ./logs:/app/logs
     environment:
       - TZ=Asia/Shanghai
       - APP_ENV=production
     healthcheck:
-      test: ["CMD-SHELL", "pgrep -f monitor.sh || exit 1"]
+      test: [ "CMD-SHELL", "pgrep -f main || exit 1" ]
       interval: 30s
       timeout: 10s
       retries: 3
+    networks:
+      - app-network
+
+  go8002:
+    build:
+      context: ./go2
+      dockerfile: Dockerfile
+    image: goenv:8002
+    container_name: go2
+    ports:
+      - "8002:8001"
+    restart: unless-stopped
+    volumes:
+      - ./logs:/app/logs
+    environment:
+      - TZ=Asia/Shanghai
+      - APP_ENV=production
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f main || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - app-network
+      
+    frontend:
+    build:
+      context: ./front  # 前端项目的相对路径
+      dockerfile: Dockerfile  # 确保这个路径指向正确的Dockerfile
+    container_name: front
+    ports:
+      - "3003:80"  # 或者任何其他未被占用的端口
+    restart: always
+    networks:
+      - app-network
+
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/certs:/etc/nginx/certs
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+    restart: always
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
 ```
 
-## Dockerfile 配置
-### 如果拉取不到配置 需要更改镜像源
-``` dockerfile
-#!/bin/bash
+## 2. Dockerfile（Go 服务）
 
-# 设置Git仓库配置
-REPO_URL="https://github.com/linbe-ff/gin-docker-test.git"
-BRANCH="master"
-LOCAL_REPO="/app/repo"
-CHECK_INTERVAL=10 # 检查间隔(秒)
-APP_NAME="main" # 编译后的程序名称
+```shell
+# 使用指定版本的官方Go镜像作为基础
+FROM golang:1.24.1 as builder
 
-# 克隆或更新仓库
-if [ -d "$LOCAL_REPO" ]; then
-    echo "仓库已存在，准备更新..."
-    cd "$LOCAL_REPO"
-    git remote update
-else
-    echo "首次运行，正在克隆仓库..."
-    git clone "$REPO_URL" "$LOCAL_REPO"
-    cd "$LOCAL_REPO"
-fi
+# 设置工作目录
+WORKDIR /app
 
-# 初始化变量存储当前运行的PID
-CURRENT_PID=""
-IS_FIRST="true"
+ENV GOPROXY=https://goproxy.cn,direct
 
-while true; do
-    # 获取本地和远程最新提交
-    git remote update
-    LOCAL=$(git rev-parse @)
-    REMOTE=$(git rev-parse "origin/$BRANCH")
-    echo "本地提交: $LOCAL"
-    echo "远程提交: $REMOTE"
-#
-    if [ "$LOCAL" != "$REMOTE" ] || [ "$IS_FIRST" == "true" ]; then
-        echo "检测到新提交，开始更新..."
+# 复制可执行文件
+COPY main .
 
-        # 拉取最新代码
-        git pull origin "$BRANCH"
+# 设置可执行权限
+RUN chmod +x main
 
-        # 停止当前运行的程序（如果存在）
-        echo "进程ID: $CURRENT_PID"
-        if [ ! -z "$CURRENT_PID" ]; then
-            echo "停止当前运行的程序 (PID: $CURRENT_PID)..."
-            kill $CURRENT_PID
-            CURRENT_PID=""
-        fi
+EXPOSE 8001
 
-        # 构建Go程序
-        echo "开始构建..."
-
-        go mod tidy
-
-        go build -o "$APP_NAME"
-
-        # 检查构建是否成功
-        if [ $? -ne 0 ]; then
-            echo "构建失败，请检查代码。"
-#            exit 1
-        fi
-
-        # 运行程序
-        echo "启动程序..."
-        ./"$APP_NAME" &
-
-        # 获取进程ID
-        CURRENT_PID=$!
-        echo "程序已启动，PID: $CURRENT_PID"
-
-        # 记录当前版本
-        git rev-parse HEAD > .current_version
-        IS_FIRST="false"
-    else
-        echo "没有检测到新提交，当前版本: $(cat .current_version 2>/dev/null || echo '未知')"
-    fi
-
-    # 等待下次检查
-    sleep $CHECK_INTERVAL
-done
+# 入口点
+ENTRYPOINT ["./main"]
 ```
 
-## shell 脚本 - 用于定时检测是否有新的代码提交，如果有则拉取最新代码并重新编译
-``` shell
-#!/bin/bash
+3. nginx.conf
+```shell
+user  nginx;
+worker_processes  auto;
 
-# 设置Git仓库配置
-REPO_URL="https://github.com/linbe-ff/gin-docker-test.git"
-BRANCH="master"
-LOCAL_REPO="/app/repo"
-CHECK_INTERVAL=10 # 检查间隔(秒)
-APP_NAME="docker-test" # 编译后的程序名称
+error_log  /var/log/nginx/error.log warn;
+pid        /var/run/nginx.pid;
 
-# 克隆或更新仓库
-if [ -d "$LOCAL_REPO" ]; then
-    echo "仓库已存在，准备更新..."
-    cd "$LOCAL_REPO"
-    git remote update
-else
-    echo "首次运行，正在克隆仓库..."
-    git clone "$REPO_URL" "$LOCAL_REPO"
-    cd "$LOCAL_REPO"
-fi
+events {
+    worker_connections  1024;
+}
 
-# 初始化变量存储当前运行的PID
-CURRENT_PID=""
-IS_FIRST="true"
+http {
+    include       /etc/nginx/mime.types;
+    default_type  application/octet-stream;
 
-while true; do
-    # 获取本地和远程最新提交
-    git remote update
-    LOCAL=$(git rev-parse @)
-    REMOTE=$(git rev-parse "origin/$BRANCH")
-    echo "本地提交: $LOCAL"
-    echo "远程提交: $REMOTE"
-#
-    if [ "$LOCAL" != "$REMOTE" ] || [ "$IS_FIRST" == "true" ]; then
-        echo "检测到新提交，开始更新..."
+    log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                      '$status $body_bytes_sent "$http_referer" '
+                      '"$http_user_agent" "$http_x_forwarded_for"';
 
-        # 拉取最新代码
-        git pull origin "$BRANCH"
+    access_log  /var/log/nginx/access.log  main;
 
-        # 停止当前运行的程序（如果存在）
-        echo "进程ID: $CURRENT_PID"
-        if [ ! -z "$CURRENT_PID" ]; then
-            echo "停止当前运行的程序 (PID: $CURRENT_PID)..."
-            kill $CURRENT_PID
-            CURRENT_PID=""
-        fi
+    sendfile        on;
+    keepalive_timeout  65;
 
-        # 构建Go程序
-        echo "开始构建..."
+    # 包含所有独立的配置文件
+    include /etc/nginx/conf.d/*.conf;
+}
+```
 
-        go mod tidy
+Nginx 服务配置（go1.conf）:
+```shell
+server {
+    listen 80;
+    server_name m.wsky.fun;
+    return 301 https://$host$request_uri;
+}
 
-        go build -o "$APP_NAME"
+server {
+    listen 443 ssl;
+    server_name m.wsky.fun;
 
-        # 检查构建是否成功
-        if [ $? -ne 0 ]; then
-            echo "构建失败，请检查代码。"
-#            exit 1
-        fi
+    ssl_certificate /etc/nginx/certs/m.wsky.pem;
+    ssl_certificate_key /etc/nginx/certs/m.wsky.key;
 
-        # 运行程序
-        echo "启动程序..."
-        ./"$APP_NAME" &
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers on;
 
-        # 获取进程ID
-        CURRENT_PID=$!
-        echo "程序已启动，PID: $CURRENT_PID"
-
-        # 记录当前版本
-        git rev-parse HEAD > .current_version
-        IS_FIRST="false"
-    else
-        echo "没有检测到新提交，当前版本: $(cat .current_version 2>/dev/null || echo '未知')"
-    fi
-
-    # 等待下次检查
-    sleep $CHECK_INTERVAL
-done
+    location / {
+        proxy_pass http://go1:8001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
 ```

@@ -1,0 +1,18 @@
+# 使用指定版本的官方Go镜像作为基础
+FROM golang:1.24.1 as builder
+
+# 设置工作目录
+WORKDIR /app
+
+ENV GOPROXY=https://goproxy.cn,direct
+
+# 复制监控脚本
+COPY main .
+
+# 设置可执行权限
+RUN chmod +x main
+
+EXPOSE 8001
+
+# 入口点
+ENTRYPOINT ["./main"]

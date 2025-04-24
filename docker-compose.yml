@@ -1,24 +1,81 @@
 version: '3.8'
 
 services:
-  monitor:
+  go8001:
     build:
-      context: .
+      context: ./81
       dockerfile: Dockerfile
-    image: goenv:24  # 添加这一行
-    container_name: go8001  # 指定容器名称
+    image: goenv:8001  # 添加这一行
+    container_name: go1  # 指定容器名称
     ports:
       - "8001:8001"
     restart: unless-stopped
     volumes:
-      - ./monitor.sh:/app/monitor.sh
       - ./logs:/app/logs  # 如果需要日志持久化
     environment:
       - TZ=Asia/Shanghai
       - APP_ENV=production
     healthcheck:
-      test: ["CMD-SHELL", "pgrep -f monitor.sh || exit 1"]
+      test: [ "CMD-SHELL", "pgrep -f main || exit 1" ]
       interval: 30s
       timeout: 10s
       retries: 3
+#    healthcheck:
+#      test: ["CMD-SHELL", "pgrep -f monitor.sh || exit 1"]
+#      interval: 30s
+#      timeout: 10s
+#      retries: 3
+    networks:
+      - app-network
+
+  go8002:
+    build:
+      context: ./82
+      dockerfile: Dockerfile
+    image: goenv:8002  # 添加这一行
+    container_name: go2  # 指定容器名称
+    ports:
+      - "8002:8001"
+    restart: unless-stopped
+    volumes:
+      - ./logs:/app/logs  # 如果需要日志持久化
+    environment:
+      - TZ=Asia/Shanghai
+      - APP_ENV=production
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f main || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - app-network
+
+  frontend:
+    build:
+      context: ./front  # 前端项目的相对路径
+      dockerfile: Dockerfile  # 确保这个路径指向正确的Dockerfile
+    container_name: front
+    ports:
+      - "3003:80"  # 或者任何其他未被占用的端口
+    restart: always
+    networks:
+      - app-network
+
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
+    ports:
+     - "80:80"
+     - "443:443"
+    volumes:
+     - ./nginx/certs:/etc/nginx/certs
+     - ./nginx/conf.d:/etc/nginx/conf.d
+     - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+    restart: always
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
 

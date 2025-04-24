@@ -39,6 +39,6 @@ func main() {
 	})
 	// 3.监听端口，默认在8080
 	// Run("里面不指定端口号默认为8080")
-	r.Run(":8001")
+	r.Run(":8002")
 	os.WriteFile(logpath+"log"+time.Now().Format("2006-01-02 15:04:05")+".log", []byte("程序启动：端口："+strconv.Itoa(8001)), 0644)
 }
