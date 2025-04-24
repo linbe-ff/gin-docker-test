@@ -1,4 +1,13 @@
 # docker 部署go 项目教程
+
+    本项目是一个简单的docker 部署go 项目和前端项目的教程，包含了go 项目的dockerfile 和docker-compose.yml 文件，
+    以及nginx 的dockerfile 和docker-compose.yml 文件。
+    
+    大致流程如下：前提（需要证书和域名）
+    1 编写dockerfile 
+    2 对应的nginx配置 
+    3 编写docker-compose.yml 文件
+
  秘钥这里只做示例 （不可用）
 ## 目录结构
 ```
